@@ -1,0 +1,253 @@
+/* Полоска дней недели */
+.week-strip {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding: 4px;
+  background: #F9FAFB;
+  border-radius: var(--radius-lg);
+}
+
+.week-day {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+  transition: all 0.2s ease;
+}
+
+.week-day:hover {
+  background: var(--bg);
+}
+
+.week-day.selected {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.week-day.today .week-day-num {
+  font-weight: 700;
+}
+
+.week-day-name {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.week-day-num {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* Карточка 3 главных задач */
+.day-tasks-card {
+  margin-bottom: 24px;
+  padding: 20px;
+}
+
+.day-tasks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.day-tasks-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.day-tasks-counter {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--bg);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+.day-tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.day-task-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: var(--radius-md);
+}
+
+.day-task-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.day-task-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.day-task-item:hover .day-task-actions {
+  opacity: 1;
+}
+
+.btn-icon-mini {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  transition: all 0.2s ease;
+}
+
+.btn-icon-mini:hover {
+  background: #F3F4F6;
+  color: var(--text);
+}
+
+.btn-icon-mini.text-danger:hover {
+  background: #FEF2F2;
+  color: var(--danger);
+}
+
+.btn-icon-mini svg {
+  width: 14px;
+  height: 14px;
+}
+
+.day-task-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 500;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius-md);
+  background: transparent;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.day-task-add:hover {
+  opacity: 1;
+}
+
+.day-task-add svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Расписание */
+.schedule-section {
+  margin-top: 24px;
+}
+
+.schedule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.schedule-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.schedule-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedule-item {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.schedule-item-time {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  min-width: 50px;
+  padding-top: 2px;
+}
+
+.schedule-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.schedule-item-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.schedule-item-main span:not(.chip) {
+  flex: 1;
+  font-weight: 500;
+}
+
+.chip-sm {
+  font-size: 10px;
+  padding: 3px 8px;
+}
+
+.schedule-item-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.schedule-item-actions .btn-icon {
+  padding: 6px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+}
+
+.schedule-item-actions .btn-icon:hover {
+  background: #F3F4F6;
+  color: var(--text);
+}
+
+.schedule-item-actions .btn-icon.text-danger:hover {
+  color: var(--danger);
+  background: #FEF2F2;
+}
+
+.schedule-item-actions svg {
+  width: 16px;
+  height: 16px;
+}
+

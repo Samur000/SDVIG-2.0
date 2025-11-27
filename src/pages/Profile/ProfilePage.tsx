@@ -1,0 +1,478 @@
+import { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Layout } from '../../components/Layout';
+import { Modal } from '../../components/Modal';
+import { EmptyState } from '../../components/UI';
+import { useApp } from '../../store/AppContext';
+import { Profile, Document, Theme } from '../../types';
+import { isThisWeek, formatDate, getDayOfWeek } from '../../utils/date';
+import { ProfileForm } from './ProfileForm';
+import { DocumentForm } from './DocumentForm';
+import './ProfilePage.css';
+
+export function ProfilePage() {
+  const { state, dispatch } = useApp();
+  const navigate = useNavigate();
+  const [showProfileForm, setShowProfileForm] = useState(false);
+  const [showDocForm, setShowDocForm] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+  
+  // Финансы
+  const totalBalance = useMemo(() => 
+    state.wallets.reduce((sum, w) => sum + w.balance, 0),
+    [state.wallets]
+  );
+  
+  const cashBalance = useMemo(() =>
+    state.wallets.filter(w => w.type === 'cash').reduce((sum, w) => sum + w.balance, 0),
+    [state.wallets]
+  );
+  
+  const cardBalance = useMemo(() =>
+    state.wallets.filter(w => w.type === 'card').reduce((sum, w) => sum + w.balance, 0),
+    [state.wallets]
+  );
+  
+  // Статистика задач
+  const weekTasks = useMemo(() => {
+    const tasks = state.tasks.filter(t => !t.parentId);
+    const completed = tasks.filter(t => t.completed).length;
+    const total = tasks.length;
+    return { completed, total, percent: total > 0 ? Math.round((completed / total) * 100) : 0 };
+  }, [state.tasks]);
+  
+  // Статистика привычек
+  const habitsStats = useMemo(() => {
+    if (state.habits.length === 0) return { avgPercent: 0 };
+    
+    let totalPercent = 0;
+    const today = new Date();
+    
+    state.habits.forEach(habit => {
+      let total = 0;
+      let completed = 0;
+      
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = formatDate(date);
+        const dayOfWeek = getDayOfWeek(date);
+        
+        const freq = habit.frequency;
+        let shouldDo = false;
+        
+        if (freq.type === 'daily') shouldDo = true;
+        else if (freq.type === 'weekdays') shouldDo = ['пн', 'вт', 'ср', 'чт', 'пт'].includes(dayOfWeek);
+        else if (freq.type === 'specific') shouldDo = freq.days.includes(dayOfWeek);
+        else shouldDo = true;
+        
+        if (shouldDo) {
+          total++;
+          if (habit.completedDates.includes(dateStr)) {
+            completed++;
+          }
+        }
+      }
+      
+      if (total > 0) {
+        totalPercent += (completed / total) * 100;
+      }
+    });
+    
+    return { avgPercent: Math.round(totalPercent / state.habits.length) };
+  }, [state.habits]);
+  
+  // Фокус-время за неделю
+  const weekFocusTime = useMemo(() => {
+    const weekSessions = state.focusSessions.filter(s => isThisWeek(s.date.split('T')[0]));
+    const totalSeconds = weekSessions.reduce((sum, s) => sum + s.duration, 0);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    return { hours, minutes, totalMinutes: Math.floor(totalSeconds / 60) };
+  }, [state.focusSessions]);
+  
+  const formatMoney = (amount: number) => {
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: 'RUB',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+  
+  const handleSaveProfile = (profile: Profile) => {
+    dispatch({ type: 'UPDATE_PROFILE', payload: profile });
+    setShowProfileForm(false);
+  };
+  
+  const handleAddDocument = (doc: Document) => {
+    dispatch({ type: 'ADD_DOCUMENT', payload: doc });
+    setShowDocForm(false);
+  };
+  
+  const handleDeleteDocument = (id: string) => {
+    if (confirm('Удалить документ?')) {
+      dispatch({ type: 'DELETE_DOCUMENT', payload: id });
+    }
+  };
+  
+  // Переключение темы
+  const handleThemeChange = (theme: Theme) => {
+    dispatch({ type: 'SET_THEME', payload: theme });
+  };
+  
+  // Функция для скачивания/поделиться документом
+  const handleShareDocument = useCallback(async (doc: Document) => {
+    if (!doc.imageBase64) return;
+    
+    try {
+      // Конвертируем base64 в blob
+      const response = await fetch(doc.imageBase64);
+      const blob = await response.blob();
+      const file = new File([blob], `${doc.name}.${blob.type.split('/')[1] || 'png'}`, { type: blob.type });
+      
+      // Пробуем использовать Web Share API
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: doc.name,
+        });
+      } else {
+        // Fallback - скачивание файла
+        const link = document.createElement('a');
+        link.href = doc.imageBase64;
+        link.download = `${doc.name}.png`;
+        link.click();
+      }
+    } catch (error) {
+      // Если share отменен пользователем - игнорируем
+      if ((error as Error).name !== 'AbortError') {
+        console.error('Ошибка при попытке поделиться:', error);
+      }
+    }
+  }, []);
+  
+  return (
+    <Layout title="Я">
+      {/* Профиль */}
+      <div className="profile-card card">
+        <div className="profile-header">
+          <div className="profile-avatar">
+            {state.profile.name ? state.profile.name[0].toUpperCase() : '?'}
+          </div>
+          <div className="profile-info">
+            <h3 className="profile-name">
+              {state.profile.name || 'Не указано'}
+            </h3>
+            {state.profile.bio && (
+              <p className="profile-bio">{state.profile.bio}</p>
+            )}
+          </div>
+          <button 
+            className="btn btn-sm"
+            onClick={() => setShowProfileForm(true)}
+          >
+            Изменить
+          </button>
+        </div>
+        
+        {state.profile.goals.length > 0 && (
+          <div className="profile-goals">
+            <span className="goals-label">Цели:</span>
+            <div className="goals-list">
+              {state.profile.goals.map((goal, idx) => (
+                <span key={idx} className="chip">{goal}</span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      {/* Сводка денег */}
+      <div className="money-summary card-accent">
+        <div className="money-header">
+          <h3>Мои деньги</h3>
+          <button className="btn btn-sm" onClick={() => navigate('/finance')}>
+            Подробнее
+          </button>
+        </div>
+        <div className="money-total">{formatMoney(totalBalance)}</div>
+        <div className="money-breakdown">
+          <span>Наличные: {formatMoney(cashBalance)}</span>
+          <span>Карты: {formatMoney(cardBalance)}</span>
+        </div>
+      </div>
+      
+      {/* Статистика */}
+      <div className="stats-section">
+        <h3>Отчёт за неделю</h3>
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 11l3 3L22 4"/>
+                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+              </svg>
+            </div>
+            <div className="stat-content">
+              <span className="stat-value">{weekTasks.completed}/{weekTasks.total}</span>
+              <span className="stat-label">Задач выполнено</span>
+            </div>
+            {weekTasks.total > 0 && (
+              <span className="stat-badge">{weekTasks.percent}%</span>
+            )}
+          </div>
+          
+          <div className="stat-card">
+            <div className="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+                <path d="M12 6v6l4 2"/>
+              </svg>
+            </div>
+            <div className="stat-content">
+              <span className="stat-value">{habitsStats.avgPercent}%</span>
+              <span className="stat-label">Привычки</span>
+            </div>
+          </div>
+          
+          <div className="stat-card">
+            <div className="stat-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="6"/>
+                <circle cx="12" cy="12" r="2"/>
+              </svg>
+            </div>
+            <div className="stat-content">
+              <span className="stat-value">
+                {weekFocusTime.hours > 0 
+                  ? `${weekFocusTime.hours}ч ${weekFocusTime.minutes}м`
+                  : `${weekFocusTime.totalMinutes}м`
+                }
+              </span>
+              <span className="stat-label">Фокус-время</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Документы */}
+      <div className="documents-section">
+        <div className="documents-header">
+          <h3>Документы</h3>
+          <button className="btn btn-sm btn-primary" onClick={() => setShowDocForm(true)}>
+            + Добавить
+          </button>
+        </div>
+        
+        {state.documents.length === 0 ? (
+          <EmptyState
+            title="Нет документов"
+            text="Добавьте важные документы"
+            icon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+            }
+          />
+        ) : (
+          <div className="documents-grid">
+            {state.documents.map(doc => (
+              <div key={doc.id} className="document-card">
+                <div 
+                  className="document-preview"
+                  onClick={() => doc.imageBase64 && setPreviewDoc(doc)}
+                  style={{ cursor: doc.imageBase64 ? 'pointer' : 'default' }}
+                >
+                  {doc.imageBase64 ? (
+                    <img src={doc.imageBase64} alt={doc.name} />
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                  )}
+                </div>
+                <div className="document-info">
+                  <span className="document-name">{doc.name}</span>
+                  <div className="document-actions">
+                    {doc.imageBase64 && (
+                      <button 
+                        className="document-action-btn"
+                        onClick={() => handleShareDocument(doc)}
+                        title="Поделиться"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="18" cy="5" r="3"/>
+                          <circle cx="6" cy="12" r="3"/>
+                          <circle cx="18" cy="19" r="3"/>
+                          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                        </svg>
+                      </button>
+                    )}
+                    <button 
+                      className="document-action-btn text-danger"
+                      onClick={() => handleDeleteDocument(doc.id)}
+                      title="Удалить"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      
+      {/* Настройки */}
+      <div className="settings-section">
+        <h3>Настройки</h3>
+        
+        <div className="settings-list">
+          <div className="settings-item">
+            <div className="settings-item-info">
+              <span className="settings-item-title">Тема оформления</span>
+              <span className="settings-item-desc">Выберите светлую или тёмную тему</span>
+            </div>
+            <div className="theme-toggle">
+              <button 
+                className={`theme-btn ${state.settings?.theme === 'light' ? 'active' : ''}`}
+                onClick={() => handleThemeChange('light')}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/>
+                  <line x1="12" y1="21" x2="12" y2="23"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="1" y1="12" x2="3" y2="12"/>
+                  <line x1="21" y1="12" x2="23" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+              </button>
+              <button 
+                className={`theme-btn ${state.settings?.theme === 'dark' ? 'active' : ''}`}
+                onClick={() => handleThemeChange('dark')}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <a 
+            href="https://samur000.github.io/SDVIG-INFO//" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="settings-link"
+          >
+            <div className="settings-link-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+            </div>
+            <span>О проекте</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="settings-link-arrow">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </a>
+          
+          <a 
+            href="https://t.me/qafurov" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="settings-link"
+          >
+            <div className="settings-link-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+              </svg>
+            </div>
+            <span>Связаться с разработчиком</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="settings-link-arrow">
+              <polyline points="9 18 15 12 9 6"/>
+            </svg>
+          </a>
+        </div>
+      </div>
+      
+      {/* Модалки */}
+      <Modal
+        isOpen={showProfileForm}
+        onClose={() => setShowProfileForm(false)}
+        title="Редактировать профиль"
+      >
+        <ProfileForm
+          profile={state.profile}
+          onSave={handleSaveProfile}
+          onCancel={() => setShowProfileForm(false)}
+        />
+      </Modal>
+      
+      <Modal
+        isOpen={showDocForm}
+        onClose={() => setShowDocForm(false)}
+        title="Добавить документ"
+      >
+        <DocumentForm
+          onSave={handleAddDocument}
+          onCancel={() => setShowDocForm(false)}
+        />
+      </Modal>
+      
+      {/* Модалка предпросмотра документа */}
+      {previewDoc && (
+        <div className="document-preview-overlay" onClick={() => setPreviewDoc(null)}>
+          <div className="document-preview-container" onClick={e => e.stopPropagation()}>
+            <button 
+              className="document-preview-close"
+              onClick={() => setPreviewDoc(null)}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+            <div className="document-preview-header">
+              <h3>{previewDoc.name}</h3>
+            </div>
+            {previewDoc.imageBase64 && (
+              <img 
+                src={previewDoc.imageBase64} 
+                alt={previewDoc.name}
+                className="document-preview-image"
+              />
+            )}
+            <div className="document-preview-actions">
+              <button 
+                className="btn btn-primary filled"
+                onClick={() => handleShareDocument(previewDoc)}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 18, height: 18 }}>
+                  <circle cx="18" cy="5" r="3"/>
+                  <circle cx="6" cy="12" r="3"/>
+                  <circle cx="18" cy="19" r="3"/>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                </svg>
+                Поделиться
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </Layout>
+  );
+}
+
