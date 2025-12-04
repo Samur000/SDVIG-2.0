@@ -5,7 +5,7 @@
  * При первом запуске выполняется автоматическая миграция из localStorage
  */
 
-import React, { createContext, useContext, useReducer, useEffect, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef, useState, ReactNode } from 'react';
 import { 
   AppState, 
   initialState, 
@@ -23,6 +23,9 @@ import {
   Theme
 } from '../types';
 import { initStorage, saveStateAsync } from './storage';
+
+// Флаг для показа модалки обновления (показывается один раз)
+const UPDATE_MODAL_SHOWN_FLAG = 'sdvig_v2_update_shown';
 
 // Action Types
 type Action =
@@ -333,10 +336,221 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+/**
+ * Компонент модалки обновления
+ */
+function UpdateModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      zIndex: 9999,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '20px',
+      background: 'rgba(0,0,0,0.5)',
+      backdropFilter: 'blur(4px)',
+      animation: 'fadeIn 0.3s ease'
+    }}>
+      <div style={{
+        background: 'var(--bg, #fff)',
+        borderRadius: '16px',
+        maxWidth: '400px',
+        width: '100%',
+        overflow: 'hidden',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        animation: 'slideUp 0.3s ease'
+      }}>
+        {/* Заголовок с градиентом */}
+        <div style={{
+          background: 'linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)',
+          padding: '24px',
+          textAlign: 'center'
+        }}>
+          <div style={{
+            fontSize: '48px',
+            marginBottom: '8px'
+          }}>🚀</div>
+          <h2 style={{
+            color: 'white',
+            fontSize: '22px',
+            fontWeight: 700,
+            margin: 0
+          }}>СДВиГ 2.0</h2>
+          <p style={{
+            color: 'rgba(255,255,255,0.9)',
+            fontSize: '14px',
+            margin: '8px 0 0 0'
+          }}>Добро пожаловать в новую версию!</p>
+        </div>
+        
+        {/* Контент */}
+        <div style={{
+          padding: '24px'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+            marginBottom: '16px'
+          }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: 'var(--accent-soft, #D1FAE5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <span style={{ fontSize: '16px' }}>💾</span>
+            </div>
+            <div>
+              <h3 style={{
+                fontSize: '15px',
+                fontWeight: 600,
+                color: 'var(--text, #1F2937)',
+                margin: '0 0 4px 0'
+              }}>Данные перенесены</h3>
+              <p style={{
+                fontSize: '13px',
+                color: 'var(--muted, #6B7280)',
+                margin: 0,
+                lineHeight: 1.5
+              }}>
+                Ваши данные успешно перенесены в новое хранилище IndexedDB для повышения надёжности и производительности.
+              </p>
+            </div>
+          </div>
+          
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px',
+            marginBottom: '20px'
+          }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '8px',
+              background: 'var(--accent-soft, #D1FAE5)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <span style={{ fontSize: '16px' }}>✨</span>
+            </div>
+            <div>
+              <h3 style={{
+                fontSize: '15px',
+                fontWeight: 600,
+                color: 'var(--text, #1F2937)',
+                margin: '0 0 4px 0'
+              }}>Что нового?</h3>
+              <p style={{
+                fontSize: '13px',
+                color: 'var(--muted, #6B7280)',
+                margin: 0,
+                lineHeight: 1.5
+              }}>
+                Улучшенный интерфейс, новые функции и многое другое. Узнайте подробнее о всех изменениях.
+              </p>
+            </div>
+          </div>
+          
+          {/* Ссылка на страницу обновления */}
+          <a
+            href="https://samur000.github.io/SDVIG-INFO/v-2"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              width: '100%',
+              padding: '14px',
+              background: 'var(--bg-secondary, #F3F4F6)',
+              borderRadius: '10px',
+              color: 'var(--accent, #0F766E)',
+              fontSize: '14px',
+              fontWeight: 600,
+              textDecoration: 'none',
+              marginBottom: '16px',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'var(--accent-soft, #D1FAE5)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'var(--bg-secondary, #F3F4F6)';
+            }}
+          >
+            <span>Подробнее об обновлении</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+          </a>
+          
+          {/* Кнопка закрытия */}
+          <button
+            onClick={onClose}
+            style={{
+              width: '100%',
+              padding: '14px',
+              background: 'linear-gradient(135deg, #0F766E 0%, #14B8A6 100%)',
+              border: 'none',
+              borderRadius: '10px',
+              color: 'white',
+              fontSize: '15px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(15, 118, 110, 0.4)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          >
+            Понятно, начать работу
+          </button>
+        </div>
+      </div>
+      
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { 
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+          }
+          to { 
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const [isLoaded, setIsLoaded] = React.useState(false);
-  const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
   
   // Ref для отслеживания, нужно ли сохранять
   const isInitialMount = useRef(true);
@@ -363,6 +577,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
         
         dispatch({ type: 'LOAD_STATE', payload: withDefaults });
         setIsLoaded(true);
+        
+        // Проверяем, нужно ли показать модалку обновления
+        const updateModalShown = localStorage.getItem(UPDATE_MODAL_SHOWN_FLAG);
+        if (!updateModalShown) {
+          setShowUpdateModal(true);
+        }
         
         console.log('AppContext: данные успешно загружены');
       } catch (error) {
@@ -410,6 +630,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const theme = state.settings?.theme || 'light';
     document.documentElement.setAttribute('data-theme', theme);
   }, [state.settings?.theme]);
+
+  // ============ Закрытие модалки обновления ============
+  const handleCloseUpdateModal = () => {
+    localStorage.setItem(UPDATE_MODAL_SHOWN_FLAG, 'true');
+    setShowUpdateModal(false);
+  };
 
   // ============ Экран загрузки ============
   if (!isLoaded) {
@@ -483,6 +709,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider value={{ state, dispatch }}>
       {children}
+      {showUpdateModal && <UpdateModal onClose={handleCloseUpdateModal} />}
     </AppContext.Provider>
   );
 }
