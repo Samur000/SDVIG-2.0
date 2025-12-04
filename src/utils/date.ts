@@ -136,3 +136,66 @@ export function formatDateShort(dateStr: string): string {
   return `${date.getDate()} ${MONTH_NAMES[date.getMonth()]}`;
 }
 
+// Получить даты месяца для календаря (с отступами для полных недель)
+export function getMonthCalendarDates(year: number, month: number): Date[] {
+  const dates: Date[] = [];
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  
+  // Находим понедельник первой недели (getDay: 0=вс, 1=пн, ..., 6=сб)
+  // Преобразуем в 0=пн, 1=вт, ..., 6=вс
+  let firstWeekday = firstDay.getDay();
+  firstWeekday = firstWeekday === 0 ? 6 : firstWeekday - 1;
+  
+  // Стартовая дата - понедельник недели, содержащей 1-е число
+  const startDate = new Date(year, month, 1 - firstWeekday);
+  
+  // Находим воскресенье последней недели
+  let lastWeekday = lastDay.getDay();
+  lastWeekday = lastWeekday === 0 ? 6 : lastWeekday - 1;
+  
+  // Конечная дата - воскресенье недели, содержащей последний день месяца
+  const endDate = new Date(lastDay);
+  endDate.setDate(lastDay.getDate() + (6 - lastWeekday));
+  
+  // Генерируем все даты (максимум 42 дня = 6 недель)
+  const current = new Date(startDate);
+  for (let i = 0; i < 42; i++) {
+    if (current > endDate) break;
+    dates.push(new Date(current));
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return dates;
+}
+
+// Название месяца в именительном падеже
+const MONTH_NAMES_NOM = [
+  'Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'
+];
+
+export function getMonthName(month: number): string {
+  return MONTH_NAMES_NOM[month];
+}
+
+// Форматирование диапазона недели
+export function formatWeekRange(dates: Date[]): string {
+  if (dates.length === 0) return '';
+  const start = dates[0];
+  const end = dates[dates.length - 1];
+  
+  const startMonth = MONTH_NAMES[start.getMonth()];
+  const endMonth = MONTH_NAMES[end.getMonth()];
+  
+  if (start.getMonth() === end.getMonth()) {
+    return `${start.getDate()}–${end.getDate()} ${startMonth}`;
+  }
+  return `${start.getDate()} ${startMonth} – ${end.getDate()} ${endMonth}`;
+}
+
+// Проверка, принадлежит ли дата текущему месяцу
+export function isSameMonth(date: Date, month: number, year: number): boolean {
+  return date.getMonth() === month && date.getFullYear() === year;
+}
+

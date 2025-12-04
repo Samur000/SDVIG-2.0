@@ -454,3 +454,13 @@
   color: var(--muted);
 }
 
+/* Backup section */
+.backup-section {
+  flex-wrap: wrap;
+}
+
+.backup-actions {
+  display: flex;
+  gap: 8px;
+}
+

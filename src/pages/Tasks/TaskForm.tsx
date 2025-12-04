@@ -35,7 +35,8 @@ export function TaskForm({ task, onSave, onCancel }: TaskFormProps) {
       date: date || undefined,
       priority,
       timeEstimate: timeEstimate || undefined,
-      parentId: task?.parentId
+      parentId: task?.parentId,
+      createdAt: task?.createdAt || new Date().toISOString()
     });
   };
   

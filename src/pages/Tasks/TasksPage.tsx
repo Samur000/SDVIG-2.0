@@ -27,6 +27,33 @@ export function TasksPage() {
   const today = getToday();
   const todayDayOfWeek = getDayOfWeek(new Date());
   
+  // Форматирование даты создания задачи
+  const formatCreatedAt = (isoString: string): string => {
+    const date = new Date(isoString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${day}.${month}.${year}, ${hours}:${minutes}`;
+  };
+  
+  // Расчёт количества прошедших дней
+  const getDaysAgo = (isoString: string): number => {
+    const created = new Date(isoString);
+    const now = new Date();
+    const diffTime = now.getTime() - created.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  };
+  
+  // Форматирование "X дней"
+  const formatDaysAgo = (days: number): string => {
+    if (days === 0) return '0 дней';
+    if (days === 1) return '1 день';
+    if (days >= 2 && days <= 4) return `${days} дня`;
+    return `${days} дней`;
+  };
+  
   // Группировка задач
   const groupedTasks = useMemo(() => {
     const todayTasks: Task[] = [];
@@ -192,7 +219,8 @@ export function TasksPage() {
           completed: false,
           date: task.date,
           priority: 'normal',
-          parentId: task.id
+          parentId: task.id,
+          createdAt: new Date().toISOString()
         }
       });
     });
@@ -213,6 +241,11 @@ export function TasksPage() {
             <span className={task.completed ? 'line-through' : ''}>{task.title}</span>
             {task.timeEstimate && (
               <span className="task-estimate">{task.timeEstimate} мин</span>
+            )}
+            {task.createdAt && (
+              <span className="task-created">
+                Добавлено: {formatCreatedAt(task.createdAt)} · {formatDaysAgo(getDaysAgo(task.createdAt))} назад
+              </span>
             )}
           </div>
           <div className="task-actions">

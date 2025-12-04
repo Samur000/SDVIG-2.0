@@ -60,6 +60,7 @@ export interface Task {
   priority: TaskPriority;
   timeEstimate?: TaskTimeEstimate;
   parentId?: string; // для подзадач
+  createdAt?: string; // ISO string дата создания
 }
 
 // ============ Привычки ============

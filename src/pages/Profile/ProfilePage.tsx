@@ -1,10 +1,10 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { Modal } from '../../components/Modal';
 import { EmptyState } from '../../components/UI';
 import { useApp } from '../../store/AppContext';
-import { Profile, Document, Theme } from '../../types';
+import { Profile, Document, Theme, initialState, AppState } from '../../types';
 import { isThisWeek, formatDate, getDayOfWeek } from '../../utils/date';
 import { ProfileForm } from './ProfileForm';
 import { DocumentForm } from './DocumentForm';
@@ -16,6 +16,7 @@ export function ProfilePage() {
   const [showProfileForm, setShowProfileForm] = useState(false);
   const [showDocForm, setShowDocForm] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Финансы
   const totalBalance = useMemo(() => 
@@ -151,6 +152,86 @@ export function ProfilePage() {
       }
     }
   }, []);
+  
+  // Экспорт данных в JSON-файл
+  const handleExportData = useCallback(() => {
+    try {
+      // Собираем все данные из localStorage
+      const backupData: Record<string, unknown> = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) {
+          const value = localStorage.getItem(key);
+          if (value) {
+            try {
+              backupData[key] = JSON.parse(value);
+            } catch {
+              backupData[key] = value;
+            }
+          }
+        }
+      }
+      
+      // Формируем имя файла с датой
+      const date = new Date();
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const filename = `sdvig-backup-${dateStr}.json`;
+      
+      // Создаём и скачиваем файл
+      const jsonStr = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Ошибка при экспорте данных:', error);
+      alert('Ошибка при экспорте данных');
+    }
+  }, []);
+  
+  // Импорт данных из JSON-файла
+  const handleImportData = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const backupData = JSON.parse(content);
+        
+        // Очищаем localStorage и записываем данные из бэкапа
+        localStorage.clear();
+        for (const [key, value] of Object.entries(backupData)) {
+          localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+        }
+        
+        // Загружаем состояние приложения
+        const appStateKey = 'sdvig-app-state';
+        const savedState = localStorage.getItem(appStateKey);
+        if (savedState) {
+          const parsed = JSON.parse(savedState);
+          const newState: AppState = { ...initialState, ...parsed };
+          dispatch({ type: 'LOAD_STATE', payload: newState });
+        }
+        
+        alert('Данные успешно восстановлены!');
+      } catch (error) {
+        console.error('Ошибка при импорте данных:', error);
+        alert('Ошибка при чтении файла. Убедитесь, что это корректный JSON-файл бэкапа.');
+      }
+    };
+    
+    reader.readAsText(file);
+    
+    // Сбрасываем значение input чтобы можно было загрузить тот же файл повторно
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [dispatch]);
   
   return (
     <Layout title="Я">
@@ -366,6 +447,31 @@ export function ProfilePage() {
                   <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
                 </svg>
               </button>
+            </div>
+          </div>
+          
+          <div className="settings-item backup-section">
+            <div className="settings-item-info">
+              <span className="settings-item-title">Бэкап данных</span>
+              <span className="settings-item-desc">Экспорт и импорт данных приложения</span>
+            </div>
+            <div className="backup-actions">
+              <button 
+                className="btn btn-sm"
+                onClick={handleExportData}
+              >
+                Экспорт
+              </button>
+              <label className="btn btn-sm btn-primary">
+                Импорт
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/json"
+                  onChange={handleImportData}
+                  style={{ display: 'none' }}
+                />
+              </label>
             </div>
           </div>
           
