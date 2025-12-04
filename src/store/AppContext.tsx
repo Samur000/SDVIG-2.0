@@ -463,7 +463,7 @@ function UpdateModal({ onClose }: { onClose: () => void }) {
           
           {/* Ссылка на страницу обновления */}
           <a
-            href="https://samur000.github.io/SDVIG-INFO/v-2"
+            href="https://samur000.github.io/SDVIG-INFO/changelog/v2.0"
             target="_blank"
             rel="noopener noreferrer"
             style={{
