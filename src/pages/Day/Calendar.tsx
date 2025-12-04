@@ -4,8 +4,7 @@ import {
   getMonthName, 
   formatDate, 
   isToday, 
-  isSameMonth,
-  addDays
+  isSameMonth
 } from '../../utils/date';
 import './Calendar.css';
 

@@ -12,8 +12,7 @@ import {
   formatDateFull,
   getWeekDates,
   isToday,
-  addDays,
-  isSameDay
+  addDays
 } from '../../utils/date';
 import { v4 as uuid } from 'uuid';
 import { FocusMode } from './FocusMode';
@@ -48,7 +47,6 @@ export function DayPage() {
   const dateStr = formatDate(selectedDate);
   const dayOfWeek = getDayOfWeek(selectedDate);
   const weekDates = useMemo(() => getWeekDates(selectedDate), [selectedDate]);
-  const today = new Date();
   const isTodaySelected = isToday(selectedDate);
   
   // Карта событий для индикаторов (для всех дат)
@@ -292,9 +290,6 @@ export function DayPage() {
     setSelectedDate(date);
   };
 
-  // Проверка пустой недели
-  const isWeekEmpty = sortedItems.length === 0 && dayTasks.length === 0;
-  
   return (
     <Layout 
       title={getDayName(selectedDate)}
