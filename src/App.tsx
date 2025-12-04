@@ -5,7 +5,7 @@ import { DayPage } from './pages/Day';
 import { FinancePage } from './pages/Finance';
 import { TasksPage } from './pages/Tasks';
 import { InboxPage } from './pages/Inbox';
-import { ProfilePage } from './pages/Profile';
+import { ProfilePage, SettingsPage } from './pages/Profile';
 
 const basename = import.meta.env.BASE_URL;
 
@@ -20,6 +20,7 @@ export function App() {
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/inbox" element={<InboxPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </BrowserRouter>
       </ToastProvider>

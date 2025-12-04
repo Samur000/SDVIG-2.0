@@ -464,3 +464,73 @@
   gap: 8px;
 }
 
+/* Header buttons */
+.header-settings-btn,
+.header-back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  color: var(--text);
+  transition: all 0.2s ease;
+}
+
+.header-settings-btn:hover,
+.header-back-btn:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.header-settings-btn svg,
+.header-back-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* Settings version */
+.settings-version {
+  text-align: center;
+  padding: 24px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Confirm modal */
+.confirm-modal {
+  padding: 8px 0;
+}
+
+.confirm-text {
+  font-size: 15px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.confirm-hint {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 16px;
+}
+
+.confirm-warning {
+  color: var(--danger);
+}
+
+.confirm-file {
+  font-size: 13px;
+  color: var(--accent);
+  padding: 10px 12px;
+  background: var(--accent-soft);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
