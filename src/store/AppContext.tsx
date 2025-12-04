@@ -341,7 +341,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Ref для отслеживания, нужно ли сохранять
   const isInitialMount = useRef(true);
   // Ref для debounce сохранения
-  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ============ Загрузка данных при старте (из IndexedDB) ============
   useEffect(() => {
