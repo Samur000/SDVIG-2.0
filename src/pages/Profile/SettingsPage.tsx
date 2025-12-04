@@ -1,9 +1,17 @@
+/**
+ * Страница настроек приложения СДВиГ
+ * 
+ * ВАЖНО: С версии 2.0 экспорт/импорт работает через IndexedDB
+ * localStorage больше не используется для основных данных
+ */
+
 import { useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../../components/Layout';
 import { Modal } from '../../components/Modal';
 import { useApp } from '../../store/AppContext';
 import { Theme, initialState, AppState, Profile } from '../../types';
+import { exportAllData, importAllData } from '../../store/indexedDB';
 import './ProfilePage.css';
 
 type ModalType = 'export' | 'import' | 'profile' | null;
@@ -17,6 +25,7 @@ export function SettingsPage() {
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   
   // Состояние для редактирования профиля
   const [name, setName] = useState(state.profile.name || '');
@@ -125,28 +134,23 @@ export function SettingsPage() {
     setActiveModal(null);
   };
   
-  // Экспорт данных
-  const executeExport = useCallback(() => {
+  /**
+   * Экспорт данных из IndexedDB
+   * Формирует JSON-файл со всеми данными приложения
+   */
+  const executeExport = useCallback(async () => {
+    setIsProcessing(true);
+    
     try {
-      const backupData: Record<string, unknown> = {};
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key) {
-          const value = localStorage.getItem(key);
-          if (value) {
-            try {
-              backupData[key] = JSON.parse(value);
-            } catch {
-              backupData[key] = value;
-            }
-          }
-        }
-      }
+      // Получаем все данные из IndexedDB
+      const backupData = await exportAllData();
       
+      // Формируем имя файла с датой
       const date = new Date();
       const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
       const filename = `sdvig-backup-${dateStr}.json`;
       
+      // Создаём и скачиваем файл
       const jsonStr = JSON.stringify(backupData, null, 2);
       const blob = new Blob([jsonStr], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -157,42 +161,56 @@ export function SettingsPage() {
       URL.revokeObjectURL(url);
       
       setActiveModal(null);
+      console.log('Экспорт данных завершён:', filename);
     } catch (error) {
       console.error('Ошибка при экспорте данных:', error);
       alert('Ошибка при экспорте данных');
+    } finally {
+      setIsProcessing(false);
     }
   }, []);
   
-  // Импорт данных
-  const executeImport = useCallback(() => {
+  /**
+   * Импорт данных в IndexedDB
+   * Полностью заменяет текущие данные на данные из файла
+   * Поддерживает как старый формат (localStorage), так и новый (IndexedDB)
+   */
+  const executeImport = useCallback(async () => {
     if (!pendingFile) return;
     
+    setIsProcessing(true);
+    
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const content = e.target?.result as string;
         const backupData = JSON.parse(content);
         
-        localStorage.clear();
-        for (const [key, value] of Object.entries(backupData)) {
-          localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
-        }
+        // Импортируем данные в IndexedDB
+        // Функция importAllData сама определяет формат файла
+        const newState = await importAllData(backupData);
         
-        const appStateKey = 'sdvig-app-state';
-        const savedState = localStorage.getItem(appStateKey);
-        if (savedState) {
-          const parsed = JSON.parse(savedState);
-          const newState: AppState = { ...initialState, ...parsed };
-          dispatch({ type: 'LOAD_STATE', payload: newState });
-        }
+        // Обновляем состояние приложения
+        const fullState: AppState = { ...initialState, ...newState };
+        dispatch({ type: 'LOAD_STATE', payload: fullState });
         
         setActiveModal(null);
         setPendingFile(null);
+        
+        console.log('Импорт данных завершён');
         alert('Данные успешно восстановлены!');
       } catch (error) {
         console.error('Ошибка при импорте данных:', error);
-        alert('Ошибка при чтении файла.');
+        alert('Ошибка при чтении файла. Проверьте формат файла.');
+      } finally {
+        setIsProcessing(false);
       }
+    };
+    
+    reader.onerror = () => {
+      console.error('Ошибка чтения файла');
+      alert('Ошибка чтения файла');
+      setIsProcessing(false);
     };
     
     reader.readAsText(pendingFile);
@@ -210,6 +228,7 @@ export function SettingsPage() {
   };
   
   const closeModal = () => {
+    if (isProcessing) return; // Не закрываем во время обработки
     setActiveModal(null);
     setPendingFile(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -358,6 +377,7 @@ export function SettingsPage() {
       {/* Версия */}
       <div className="settings-version">
         <span>СДВиГ v2.0</span>
+        <span className="settings-storage-info">Данные хранятся в IndexedDB</span>
       </div>
       
       {/* Модалка редактирования профиля */}
@@ -482,8 +502,16 @@ export function SettingsPage() {
           <p className="confirm-text">Экспортировать все данные приложения?</p>
           <p className="confirm-hint">Будет скачан JSON-файл с резервной копией.</p>
           <div className="confirm-actions">
-            <button className="btn" onClick={closeModal}>Отмена</button>
-            <button className="btn btn-primary filled" onClick={executeExport}>Да</button>
+            <button className="btn" onClick={closeModal} disabled={isProcessing}>
+              Отмена
+            </button>
+            <button 
+              className="btn btn-primary filled" 
+              onClick={executeExport}
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'Экспорт...' : 'Да'}
+            </button>
           </div>
         </div>
       </Modal>
@@ -495,8 +523,16 @@ export function SettingsPage() {
           <p className="confirm-hint confirm-warning">Все текущие данные будут заменены!</p>
           {pendingFile && <p className="confirm-file">Файл: {pendingFile.name}</p>}
           <div className="confirm-actions">
-            <button className="btn" onClick={closeModal}>Отмена</button>
-            <button className="btn btn-primary filled" onClick={executeImport}>Да</button>
+            <button className="btn" onClick={closeModal} disabled={isProcessing}>
+              Отмена
+            </button>
+            <button 
+              className="btn btn-primary filled" 
+              onClick={executeImport}
+              disabled={isProcessing}
+            >
+              {isProcessing ? 'Импорт...' : 'Да'}
+            </button>
           </div>
         </div>
       </Modal>

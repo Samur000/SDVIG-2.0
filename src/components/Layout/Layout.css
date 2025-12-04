@@ -39,7 +39,6 @@
   font-size: 26px;
   font-weight: 700;
   color: var(--text);
-  text-transform: lowercase;
   letter-spacing: -0.02em;
 }
 

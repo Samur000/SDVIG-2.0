@@ -1,4 +1,11 @@
-import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
+/**
+ * Главный контекст приложения СДВиГ
+ * 
+ * ВАЖНО: С версии 2.0 данные хранятся в IndexedDB
+ * При первом запуске выполняется автоматическая миграция из localStorage
+ */
+
+import React, { createContext, useContext, useReducer, useEffect, useRef, ReactNode } from 'react';
 import { 
   AppState, 
   initialState, 
@@ -15,7 +22,7 @@ import {
   FocusSession,
   Theme
 } from '../types';
-import { loadState, saveState } from './storage';
+import { initStorage, saveStateAsync } from './storage';
 
 // Action Types
 type Action =
@@ -329,42 +336,146 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [isLoaded, setIsLoaded] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+  
+  // Ref для отслеживания, нужно ли сохранять
+  const isInitialMount = useRef(true);
+  // Ref для debounce сохранения
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Загрузка при старте
+  // ============ Загрузка данных при старте (из IndexedDB) ============
   useEffect(() => {
-    const loaded = loadState();
-    // Обеспечиваем совместимость со старыми данными
-    const withSettings = {
-      ...loaded,
-      settings: loaded.settings || initialState.settings
-    };
-    dispatch({ type: 'LOAD_STATE', payload: withSettings });
-    setIsLoaded(true);
+    async function loadData() {
+      try {
+        console.log('AppContext: инициализация хранилища...');
+        
+        // initStorage выполняет:
+        // 1. Открытие IndexedDB
+        // 2. Миграцию из localStorage (если нужно)
+        // 3. Загрузку данных
+        const loadedState = await initStorage();
+        
+        // Обеспечиваем совместимость со старыми данными
+        const withDefaults: AppState = {
+          ...loadedState,
+          settings: loadedState.settings || initialState.settings
+        };
+        
+        dispatch({ type: 'LOAD_STATE', payload: withDefaults });
+        setIsLoaded(true);
+        
+        console.log('AppContext: данные успешно загружены');
+      } catch (error) {
+        console.error('AppContext: ошибка загрузки данных:', error);
+        setLoadError('Ошибка загрузки данных. Попробуйте обновить страницу.');
+        // Даже при ошибке показываем приложение с начальным состоянием
+        setIsLoaded(true);
+      }
+    }
+    
+    loadData();
   }, []);
 
-  // Сохранение при изменениях
+  // ============ Сохранение данных при изменениях (в IndexedDB) ============
   useEffect(() => {
-    if (isLoaded) {
-      saveState(state);
+    // Пропускаем первый рендер и рендер до загрузки
+    if (isInitialMount.current || !isLoaded) {
+      isInitialMount.current = false;
+      return;
     }
+
+    // Debounce сохранения для избежания частых записей
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await saveStateAsync(state);
+        // Сохранение успешно - не логируем каждый раз
+      } catch (error) {
+        console.error('AppContext: ошибка сохранения:', error);
+      }
+    }, 300); // 300ms debounce
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, [state, isLoaded]);
 
-  // Применение темы
+  // ============ Применение темы ============
   useEffect(() => {
     const theme = state.settings?.theme || 'light';
     document.documentElement.setAttribute('data-theme', theme);
   }, [state.settings?.theme]);
 
+  // ============ Экран загрузки ============
   if (!isLoaded) {
     return (
       <div style={{ 
         display: 'flex', 
+        flexDirection: 'column',
         alignItems: 'center', 
         justifyContent: 'center', 
         height: '100vh',
-        fontFamily: 'system-ui'
+        fontFamily: 'system-ui',
+        gap: '12px'
       }}>
-        Загрузка...
+        <div style={{
+          width: '40px',
+          height: '40px',
+          border: '3px solid #E5E7EB',
+          borderTopColor: '#0F766E',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }} />
+        <span style={{ color: '#6B7280' }}>Загрузка...</span>
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // ============ Экран ошибки ============
+  if (loadError) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100vh',
+        fontFamily: 'system-ui',
+        padding: '20px',
+        textAlign: 'center'
+      }}>
+        <div style={{ 
+          fontSize: '48px',
+          marginBottom: '16px'
+        }}>⚠️</div>
+        <p style={{ 
+          color: '#DC2626',
+          marginBottom: '16px'
+        }}>{loadError}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '12px 24px',
+            background: '#0F766E',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontFamily: 'inherit'
+          }}
+        >
+          Обновить страницу
+        </button>
       </div>
     );
   }
@@ -383,4 +494,3 @@ export function useApp() {
   }
   return context;
 }
-
