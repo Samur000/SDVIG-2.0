@@ -4,16 +4,14 @@ import { Layout } from '../../components/Layout';
 import { Modal } from '../../components/Modal';
 import { EmptyState } from '../../components/UI';
 import { useApp } from '../../store/AppContext';
-import { Profile, Document } from '../../types';
+import { Document } from '../../types';
 import { isThisWeek, formatDate, getDayOfWeek } from '../../utils/date';
-import { ProfileForm } from './ProfileForm';
 import { DocumentForm } from './DocumentForm';
 import './ProfilePage.css';
 
 export function ProfilePage() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
-  const [showProfileForm, setShowProfileForm] = useState(false);
   const [showDocForm, setShowDocForm] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<Document | null>(null);
   
@@ -100,11 +98,6 @@ export function ProfilePage() {
     }).format(amount);
   };
   
-  const handleSaveProfile = (profile: Profile) => {
-    dispatch({ type: 'UPDATE_PROFILE', payload: profile });
-    setShowProfileForm(false);
-  };
-  
   const handleAddDocument = (doc: Document) => {
     dispatch({ type: 'ADD_DOCUMENT', payload: doc });
     setShowDocForm(false);
@@ -167,7 +160,11 @@ export function ProfilePage() {
       <div className="profile-card card">
         <div className="profile-header">
           <div className="profile-avatar">
-            {state.profile.name ? state.profile.name[0].toUpperCase() : '?'}
+            {state.profile.avatar ? (
+              <img src={state.profile.avatar} alt="Аватар" />
+            ) : (
+              state.profile.name ? state.profile.name[0].toUpperCase() : '?'
+            )}
           </div>
           <div className="profile-info">
             <h3 className="profile-name">
@@ -177,12 +174,6 @@ export function ProfilePage() {
               <p className="profile-bio">{state.profile.bio}</p>
             )}
           </div>
-          <button 
-            className="btn btn-sm"
-            onClick={() => setShowProfileForm(true)}
-          >
-            Изменить
-          </button>
         </div>
         
         {state.profile.goals.length > 0 && (
@@ -341,18 +332,6 @@ export function ProfilePage() {
       </div>
       
       {/* Модалки */}
-      <Modal
-        isOpen={showProfileForm}
-        onClose={() => setShowProfileForm(false)}
-        title="Редактировать профиль"
-      >
-        <ProfileForm
-          profile={state.profile}
-          onSave={handleSaveProfile}
-          onCancel={() => setShowProfileForm(false)}
-        />
-      </Modal>
-      
       <Modal
         isOpen={showDocForm}
         onClose={() => setShowDocForm(false)}

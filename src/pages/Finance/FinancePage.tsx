@@ -27,9 +27,14 @@ export function FinancePage() {
     [state.wallets]
   );
   
-  // Сортируем транзакции по дате (новые первые)
+  // Сортируем транзакции по времени создания (новые первые)
   const sortedTransactions = useMemo(() => 
-    [...state.transactions].sort((a, b) => b.date.localeCompare(a.date)),
+    [...state.transactions].sort((a, b) => {
+      // Сначала по createdAt (если есть), потом по date
+      const timeA = a.createdAt || a.date;
+      const timeB = b.createdAt || b.date;
+      return timeB.localeCompare(timeA);
+    }),
     [state.transactions]
   );
   
@@ -175,7 +180,9 @@ export function FinancePage() {
           />
         ) : (
           <div className="transactions-list">
-            {Object.entries(groupedTransactions).map(([date, txs]) => (
+            {Object.entries(groupedTransactions)
+              .sort(([dateA], [dateB]) => dateB.localeCompare(dateA))
+              .map(([date, txs]) => (
               <div key={date} className="transactions-group">
                 <div className="transactions-date">{formatDateShort(date)}</div>
                 {txs.map(tx => (

@@ -46,6 +46,7 @@ export interface Transaction {
   walletId: string;
   category: string;
   comment?: string;
+  createdAt?: string; // ISO string для сортировки по времени
 }
 
 // ============ Дела / To-Do ============
@@ -61,6 +62,7 @@ export interface Task {
   timeEstimate?: TaskTimeEstimate;
   parentId?: string; // для подзадач
   createdAt?: string; // ISO string дата создания
+  completedAt?: string; // ISO string дата выполнения
 }
 
 // ============ Привычки ============
@@ -94,6 +96,7 @@ export interface Profile {
   name: string;
   bio?: string;
   goals: string[];
+  avatar?: string; // base64 изображение
 }
 
 // ============ Настройки ============

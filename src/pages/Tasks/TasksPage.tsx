@@ -23,6 +23,7 @@ export function TasksPage() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [breakdownTask, setBreakdownTask] = useState<Task | null>(null);
+  const [showArchive, setShowArchive] = useState(false);
   
   const today = getToday();
   const todayDayOfWeek = getDayOfWeek(new Date());
@@ -54,7 +55,16 @@ export function TasksPage() {
     return `${days} дней`;
   };
   
-  // Группировка задач
+  // Сортировка по времени создания (новые первые)
+  const sortByCreatedAt = (tasks: Task[]): Task[] => {
+    return [...tasks].sort((a, b) => {
+      const timeA = a.createdAt || '';
+      const timeB = b.createdAt || '';
+      return timeB.localeCompare(timeA);
+    });
+  };
+  
+  // Группировка задач (только невыполненные)
   const groupedTasks = useMemo(() => {
     const todayTasks: Task[] = [];
     const weekTasks: Task[] = [];
@@ -62,6 +72,7 @@ export function TasksPage() {
     
     state.tasks.forEach(task => {
       if (task.parentId) return; // Подзадачи не показываем отдельно
+      if (task.completed) return; // Выполненные в архив
       
       if (!task.date) {
         somedayTasks.push(task);
@@ -74,8 +85,19 @@ export function TasksPage() {
       }
     });
     
-    return { todayTasks, weekTasks, somedayTasks };
+    return { 
+      todayTasks: sortByCreatedAt(todayTasks), 
+      weekTasks: sortByCreatedAt(weekTasks), 
+      somedayTasks: sortByCreatedAt(somedayTasks) 
+    };
   }, [state.tasks, today]);
+  
+  // Архив выполненных задач (отсортированный по времени создания)
+  const archivedTasks = useMemo(() => {
+    return sortByCreatedAt(
+      state.tasks.filter(task => !task.parentId && task.completed)
+    );
+  }, [state.tasks]);
   
   // Подзадачи для задачи
   const getSubtasks = (taskId: string) => 
@@ -227,12 +249,12 @@ export function TasksPage() {
     setBreakdownTask(null);
   };
   
-  const renderTaskItem = (task: Task) => {
+  const renderTaskItem = (task: Task, isArchived: boolean = false) => {
     const subtasks = getSubtasks(task.id);
     
     return (
       <div key={task.id} className="task-item-wrapper">
-        <div className={`task-item ${task.priority === 'important' ? 'important' : ''}`}>
+        <div className={`task-item ${task.priority === 'important' ? 'important' : ''} ${isArchived ? 'archived' : ''}`}>
           <Checkbox 
             checked={task.completed} 
             onChange={() => handleToggleTask(task.id)}
@@ -247,40 +269,59 @@ export function TasksPage() {
                 Добавлено: {formatCreatedAt(task.createdAt)} · {formatDaysAgo(getDaysAgo(task.createdAt))} назад
               </span>
             )}
+            {task.completedAt && (
+              <span className="task-completed-at">
+                Выполнено: {formatCreatedAt(task.completedAt)}
+              </span>
+            )}
           </div>
-          <div className="task-actions">
-            <button 
-              className="btn-icon" 
-              title="Я застрял"
-              onClick={() => setBreakdownTask(task)}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10"/>
-                <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/>
-                <line x1="12" y1="17" x2="12.01" y2="17"/>
-              </svg>
-            </button>
-            <button 
-              className="btn-icon"
-              onClick={() => { setEditingTask(task); setShowTaskForm(true); }}
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-            </button>
+          {!isArchived && (
+            <div className="task-actions">
+              <button 
+                className="btn-icon" 
+                title="Я застрял"
+                onClick={() => setBreakdownTask(task)}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </button>
+              <button 
+                className="btn-icon"
+                onClick={() => { setEditingTask(task); setShowTaskForm(true); }}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+              <button 
+                className="btn-icon text-danger"
+                onClick={() => handleDeleteTask(task.id)}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                </svg>
+              </button>
+            </div>
+          )}
+          {isArchived && (
             <button 
               className="btn-icon text-danger"
               onClick={() => handleDeleteTask(task.id)}
+              title="Удалить"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="3 6 5 6 21 6"/>
                 <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
               </svg>
             </button>
-          </div>
+          )}
         </div>
-        {subtasks.length > 0 && (
+        {subtasks.length > 0 && !isArchived && (
           <div className="subtasks">
             {subtasks.map(sub => (
               <div key={sub.id} className="subtask-item">
@@ -297,6 +338,10 @@ export function TasksPage() {
       </div>
     );
   };
+  
+  const hasActiveTasks = groupedTasks.todayTasks.length > 0 || 
+                         groupedTasks.weekTasks.length > 0 || 
+                         groupedTasks.somedayTasks.length > 0;
   
   return (
     <Layout title="Дела">
@@ -329,7 +374,7 @@ export function TasksPage() {
             Добавить задачу
           </button>
           
-          {state.tasks.filter(t => !t.parentId).length === 0 ? (
+          {!hasActiveTasks && archivedTasks.length === 0 ? (
             <EmptyState
               title="Нет задач"
               text="Добавьте первую задачу"
@@ -346,7 +391,7 @@ export function TasksPage() {
                 <div className="task-group">
                   <h3>Сегодня</h3>
                   <div className="task-list">
-                    {groupedTasks.todayTasks.map(renderTaskItem)}
+                    {groupedTasks.todayTasks.map(task => renderTaskItem(task))}
                   </div>
                 </div>
               )}
@@ -355,7 +400,7 @@ export function TasksPage() {
                 <div className="task-group">
                   <h3>Эта неделя</h3>
                   <div className="task-list">
-                    {groupedTasks.weekTasks.map(renderTaskItem)}
+                    {groupedTasks.weekTasks.map(task => renderTaskItem(task))}
                   </div>
                 </div>
               )}
@@ -364,8 +409,36 @@ export function TasksPage() {
                 <div className="task-group">
                   <h3>Когда-нибудь</h3>
                   <div className="task-list">
-                    {groupedTasks.somedayTasks.map(renderTaskItem)}
+                    {groupedTasks.somedayTasks.map(task => renderTaskItem(task))}
                   </div>
+                </div>
+              )}
+              
+              {/* Архив задач */}
+              {archivedTasks.length > 0 && (
+                <div className="archive-section">
+                  <button 
+                    className="archive-toggle"
+                    onClick={() => setShowArchive(!showArchive)}
+                  >
+                    <svg 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2"
+                      className={`archive-icon ${showArchive ? 'open' : ''}`}
+                    >
+                      <polyline points="6 9 12 15 18 9"/>
+                    </svg>
+                    <span>Архив задач</span>
+                    <span className="archive-count">{archivedTasks.length}</span>
+                  </button>
+                  
+                  {showArchive && (
+                    <div className="archive-list">
+                      {archivedTasks.map(task => renderTaskItem(task, true))}
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -496,4 +569,3 @@ export function TasksPage() {
     </Layout>
   );
 }
-

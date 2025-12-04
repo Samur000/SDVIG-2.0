@@ -223,10 +223,20 @@ function reducer(state: AppState, action: Action): AppState {
         tasks: state.tasks.filter(t => t.id !== action.payload && t.parentId !== action.payload) 
       };
     case 'TOGGLE_TASK': {
-      // Сначала переключаем задачу
-      let newTasks = state.tasks.map(t =>
-        t.id === action.payload ? { ...t, completed: !t.completed } : t
-      );
+      const now = new Date().toISOString();
+      
+      // Сначала переключаем задачу с записью времени выполнения
+      let newTasks = state.tasks.map(t => {
+        if (t.id === action.payload) {
+          const willBeCompleted = !t.completed;
+          return { 
+            ...t, 
+            completed: willBeCompleted,
+            completedAt: willBeCompleted ? now : undefined
+          };
+        }
+        return t;
+      });
       
       // Находим задачу которую переключили
       const toggledTask = newTasks.find(t => t.id === action.payload);
@@ -239,7 +249,7 @@ function reducer(state: AppState, action: Action): AppState {
         // Если все подзадачи выполнены - отмечаем родительскую задачу выполненной
         if (allSubtasksCompleted) {
           newTasks = newTasks.map(t =>
-            t.id === toggledTask.parentId ? { ...t, completed: true } : t
+            t.id === toggledTask.parentId ? { ...t, completed: true, completedAt: now } : t
           );
         }
       }

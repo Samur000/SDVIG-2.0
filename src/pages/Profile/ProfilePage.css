@@ -21,6 +21,13 @@
   font-size: 24px;
   font-weight: 600;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .profile-info {
@@ -531,6 +538,132 @@
   display: flex;
   gap: 12px;
   justify-content: flex-end;
+  padding-top: 8px;
+}
+
+/* Profile edit modal */
+.profile-edit-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.avatar-edit {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 8px;
+}
+
+.avatar-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background: var(--accent);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.avatar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.profile-edit-modal .form-group {
+  margin-bottom: 0;
+}
+
+.profile-edit-modal .goals-selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.profile-edit-modal .goal-btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text);
+  transition: all 0.2s ease;
+}
+
+.profile-edit-modal .goal-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.profile-edit-modal .goal-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.profile-edit-modal .goal-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.profile-edit-modal .custom-goal {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.profile-edit-modal .custom-goal input {
+  flex: 1;
+}
+
+.profile-edit-modal .selected-goals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-edit-modal .selected-goals .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.profile-edit-modal .selected-goals .chip button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--accent);
+  transition: all 0.2s ease;
+}
+
+.profile-edit-modal .selected-goals .chip button:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.profile-edit-modal .form-actions {
   padding-top: 8px;
 }
 

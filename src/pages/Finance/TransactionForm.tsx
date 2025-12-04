@@ -40,7 +40,8 @@ export function TransactionForm({ wallets, categories, onSave, onCancel, onAddCa
       date,
       walletId,
       category: finalCategory,
-      comment: comment.trim() || undefined
+      comment: comment.trim() || undefined,
+      createdAt: new Date().toISOString()
     });
   };
   
