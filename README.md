@@ -194,8 +194,8 @@ PWA можно установить на главный экран:
 
 ```bash
 # Клонирование репозитория
-git clone https://github.com/Samur000/SDVIG-2.0.git
-cd SDVIG-2.0
+git clone https://github.com/Samur000/SDVIG.git
+cd SDVIG
 
 # Установка зависимостей
 npm install
@@ -245,7 +245,7 @@ npm run preview
 3. Результат публикуется в ветку `gh-pages`
 4. GitHub Pages раздаёт содержимое `gh-pages`
 
-**Важно:** в `vite.config.ts` указан `base: '/SDVIG-2.0/'` для корректной работы на GitHub Pages.
+**Важно:** в `vite.config.ts` указан `base: '/SDVIG/'` для корректной работы на GitHub Pages.
 
 ### Деплой на другие хостинги
 
@@ -363,5 +363,5 @@ wallets: [
 
 **Версия**: 2.0  
 **Автор**: [@qafurov](https://t.me/qafurov)  
-**Репозиторий**: [github.com/Samur000/SDVIG-2.0](https://github.com/Samur000/SDVIG-2.0)
+**Репозиторий**: [github.com/Samur000/SDVIG](https://github.com/Samur000/SDVIG)
 
